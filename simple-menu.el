@@ -61,7 +61,7 @@
                             "n"
                             "o"
                             "p"
-                            ;; "q"  ; Reserved as exit key
+                            "q"
                             "r"
                             "s"
                             "t"
@@ -72,6 +72,7 @@
                             "y"
                             "z"
                             ))
+(defvar smenu-exit-trigger-key "q")
 (defvar smenu-assoc (list))
 (defvar smenu-counter 0)
 (defvar smenu-buffer "*Simple Menu*")
@@ -83,15 +84,25 @@
 ;; Functions
 ;;=========================================================================
 
+(defun smenu-kill-buffer ()
+  (interactive)
+  (kill-buffer smenu-buffer))
+
 (defun smenu-build-menu ()
   (dotimes (i (length smenu-menu))
-    (setq smenu-assoc
-          (append smenu-assoc
-                  (list (list (nth i smenu-trigger-keys)
-                              (nth i smenu-menu)))))))
+    (let ((trigger-key (nth i smenu-trigger-keys)))
+      (unless (equal trigger-key smenu-exit-trigger-key)
+        (setq smenu-assoc
+              (append smenu-assoc
+                      (list (list trigger-key
+                                  (nth i smenu-menu)))))))))
+
 (defun smenu-insert-menu-entry (menu-element)
   (insert (format "[ %s ]    %s\n" (nth 0 menu-element)
                   (symbol-name (nth 1 menu-element)))))
+
+(defun smenu-configure-local-keys ()
+  (local-set-key smenu-exit-trigger-key 'smenu-kill-buffer))
 
 (defun smenu-show-menu ()
   (switch-to-buffer smenu-buffer)
@@ -103,7 +114,8 @@
     (dolist (list-element smenu-assoc)
       (smenu-insert-menu-entry list-element))
     ;; Make buffer read-only
-    (toggle-read-only 1)))
+    (toggle-read-only 1)
+    (smenu-configure-local-keys)))
 
 
 ;; Init
@@ -121,6 +133,7 @@
 
 (smenu-build-menu)
 (smenu-show-menu)
+
 
 
 
