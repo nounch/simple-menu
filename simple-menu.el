@@ -75,6 +75,8 @@
 (defvar smenu-assoc (list))
 (defvar smenu-counter 0)
 (defvar smenu-buffer "*Simple Menu*")
+(defvar smenu-header "--------------------------------Simple Menu---------\
+-----------------------")
 
 
 ;;=========================================================================
@@ -83,25 +85,25 @@
 
 (defun smenu-build-menu ()
   (dotimes (i (length smenu-menu))
-    (setq smenu-assoc (append smenu-assoc (list (nth i smenu-trigger-keys)
-                                                (nth i smenu-menu))))))
+    (setq smenu-assoc
+          (append smenu-assoc
+                  (list (list (nth i smenu-trigger-keys)
+                              (nth i smenu-menu)))))))
 (defun smenu-insert-menu-entry (menu-element)
-  (insert (format "%s\n" (type-of menu-element)))
-  ;; (insert (format "%s10 - %s\n" (car menu-element) (symbol-name
-  ;;                                                   (cdr menu-element))))
-  )
+  (insert (format "[ %s ]    %s\n" (nth 0 menu-element)
+                  (symbol-name (nth 1 menu-element)))))
 
 (defun smenu-show-menu ()
   (switch-to-buffer smenu-buffer)
   (with-selected-window (get-buffer-window smenu-buffer)
     ;; Make buffer writable
-    ;; (toggle-read-only nil)
+    (toggle-read-only -1)
     (erase-buffer)
+    (insert (format "%s\n\n" smenu-header))
     (dolist (list-element smenu-assoc)
       (smenu-insert-menu-entry list-element))
     ;; Make buffer read-only
-    ;; (toggle-read-only 1)
-    ))
+    (toggle-read-only 1)))
 
 
 ;; Init
