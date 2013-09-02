@@ -30,11 +30,13 @@
 ;; Variables
 ;;=========================================================================
 
-(defvar smenu-menu (list
-                    'google-this-line
-                    'wikipedia-this-line
-                    'browse-url
-                    ))
+(defvar smenu-menu)
+(setq smenu-menu (list
+                  'google-this-line
+                  'wikipedia-this-line
+                  'browse-url
+                  'debug-message
+                  ))
 (defvar smenu-trigger-keys (list
                             "1"
                             "2"
@@ -76,8 +78,10 @@
 (defvar smenu-assoc (list))
 (defvar smenu-counter 0)
 (defvar smenu-buffer "*Simple Menu*")
+(defvar smenu-previous-buffer)
 (defvar smenu-header "--------------------------------Simple Menu---------\
 -----------------------")
+(defvar smenu-current-command)
 
 
 ;;=========================================================================
@@ -89,9 +93,13 @@
   (kill-buffer smenu-buffer))
 
 (defun smenu-build-menu ()
+  (setq smenu-assoc (append smenu-assoc (list (list
+                                               smenu-exit-trigger-key
+                                               'smenu-kill-buffer))))
   (dotimes (i (length smenu-menu))
     (let ((trigger-key (nth i smenu-trigger-keys)))
       (unless (equal trigger-key smenu-exit-trigger-key)
+        ;; Other key bindings
         (setq smenu-assoc
               (append smenu-assoc
                       (list (list trigger-key
@@ -101,20 +109,34 @@
   (insert (format "[ %s ]    %s\n" (nth 0 menu-element)
                   (symbol-name (nth 1 menu-element)))))
 
+(defun smenu-make-function (menu-command)
+  (lexical-let ((menu-command menu-command))
+    (with-current-buffer smenu-previous-buffer
+      (funcall (nth 1 menu-command)))))
+
 (defun smenu-configure-local-keys ()
-  (local-set-key smenu-exit-trigger-key 'smenu-kill-buffer))
+  ;; Exit key
+  ;; (local-set-key smenu-exit-trigger-key 'smenu-kill-buffer)
+  (let ((input-char (read-char-exclusive "Choose a menu option.")))
+    (mapc '(lambda (menu-entry)
+             (if (equal input-char (string-to-char (nth 0 menu-entry)))
+                 (with-current-buffer smenu-previous-buffer
+                   (message (char-to-string input-char))
+                   (call-interactively (nth 1 menu-entry)))))
+          smenu-assoc)))
 
 (defun smenu-show-menu ()
+  (setq smenu-previous-buffer (current-buffer))
   (switch-to-buffer smenu-buffer)
   (with-selected-window (get-buffer-window smenu-buffer)
     ;; Make buffer writable
-    (toggle-read-only -1)
+    ;; (toggle-read-only -1)
     (erase-buffer)
     (insert (format "%s\n\n" smenu-header))
     (dolist (list-element smenu-assoc)
       (smenu-insert-menu-entry list-element))
     ;; Make buffer read-only
-    (toggle-read-only 1)
+    ;; (toggle-read-only 1)
     (smenu-configure-local-keys)))
 
 
@@ -130,6 +152,9 @@
 (defun debug-insert (message)
   (insert (format "\n%s" message)))
 
+(defun debug-message ()
+  (interactive)
+  (message (thing-at-point 'line)))
 
 (smenu-build-menu)
 (smenu-show-menu)
