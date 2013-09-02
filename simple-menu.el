@@ -115,28 +115,31 @@
       (funcall (nth 1 menu-command)))))
 
 (defun smenu-configure-local-keys ()
-  ;; Exit key
-  ;; (local-set-key smenu-exit-trigger-key 'smenu-kill-buffer)
-  (let ((input-char (read-char-exclusive "Choose a menu option.")))
-    (mapc '(lambda (menu-entry)
-             (if (equal input-char (string-to-char (nth 0 menu-entry)))
-                 (with-current-buffer smenu-previous-buffer
-                   (message (char-to-string input-char))
-                   (call-interactively (nth 1 menu-entry)))))
-          smenu-assoc)))
+  (let ((got-valid-input nil))
+    (while (not got-valid-input)
+      (let* ((input-char (read-char-exclusive "Choose a menu option."))
+             (entry (find-if (lambda (menu-entry)
+                               (equal input-char
+                                      (string-to-char (nth 0 menu-entry))))
+                             smenu-assoc)))
+        (when entry
+          (setq got-valid-input t)
+          (with-current-buffer smenu-previous-buffer
+            (call-interactively (nth 1 entry))
+            (smenu-kill-buffer)))))))
 
 (defun smenu-show-menu ()
   (setq smenu-previous-buffer (current-buffer))
   (switch-to-buffer smenu-buffer)
   (with-selected-window (get-buffer-window smenu-buffer)
     ;; Make buffer writable
-    ;; (toggle-read-only -1)
+    (toggle-read-only -1)
     (erase-buffer)
     (insert (format "%s\n\n" smenu-header))
     (dolist (list-element smenu-assoc)
       (smenu-insert-menu-entry list-element))
     ;; Make buffer read-only
-    ;; (toggle-read-only 1)
+    (toggle-read-only 1)
     (smenu-configure-local-keys)))
 
 
