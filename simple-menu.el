@@ -129,18 +129,20 @@
             (smenu-kill-buffer)))))))
 
 (defun smenu-show-menu ()
-  (setq smenu-previous-buffer (current-buffer))
-  (switch-to-buffer smenu-buffer)
-  (with-selected-window (get-buffer-window smenu-buffer)
-    ;; Make buffer writable
-    (toggle-read-only -1)
-    (erase-buffer)
-    (insert (format "%s\n\n" smenu-header))
-    (dolist (list-element smenu-assoc)
-      (smenu-insert-menu-entry list-element))
-    ;; Make buffer read-only
-    (toggle-read-only 1)
-    (smenu-configure-local-keys)))
+  (interactive)
+  (save-window-excursion  ; Jump back to original buffer
+    (setq smenu-previous-buffer (current-buffer))
+    (pop-to-buffer smenu-buffer)  ; Show menu in other window, if possible
+    (with-selected-window (get-buffer-window smenu-buffer)
+      ;; Make buffer writable
+      (toggle-read-only -1)
+      (erase-buffer)
+      (insert (format "%s\n\n" smenu-header))
+      (dolist (list-element smenu-assoc)
+        (smenu-insert-menu-entry list-element))
+      ;; Make buffer read-only
+      (toggle-read-only 1)
+      (smenu-configure-local-keys))))
 
 
 ;; Init
