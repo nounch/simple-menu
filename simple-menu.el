@@ -25,63 +25,96 @@
 ;;; Code:
 
 
+;;=========================================================================
+;; Customizable variables
+;;=========================================================================
+
+(defgroup smenu-custom-group nil
+  "Simple Menu customization group")
+
+(defcustom smenu-menu (list
+                       'google-this-line
+                       'wikipedia-this-line
+                       'browse-url
+                       'debug-message
+                       'yank
+                       'help
+                       )
+  "List of available commands in the menu. The order corresponds to the
+order in which the commands are displayed as menu options.
+
+`smenu-kill-buffer' is available by default as the first command in the
+menu. Its key binding can be set via `smenu-exit-trigger-key'."
+  :link '(function-link :tag
+                        "smenu kill buffer function (`smenu-kill-buffer')"
+                        smenu-kill-buffer)
+  :link '(custom-group-link :tag
+                            "smenu exit trigger key (smenu-exit-trigger-key)"
+                            smenu-exit-trigger-key)
+  :group 'smenu-custom-group
+  :type '(repeat function))
+
+(defcustom smenu-trigger-keys (list
+                               "1"
+                               "2"
+                               "3"
+                               "4"
+                               "5"
+                               "6"
+                               "7"
+                               "8"
+                               "9"
+                               "a"
+                               "b"
+                               "c"
+                               "d"
+                               "e"
+                               "f"
+                               "g"
+                               "h"
+                               "i"
+                               "j"
+                               "k"
+                               "l"
+                               "m"
+                               "n"
+                               "o"
+                               "p"
+                               "q"
+                               "r"
+                               "s"
+                               "t"
+                               "u"
+                               "v"
+                               "w"
+                               "x"
+                               "y"
+                               "z"
+                               )
+  "List of available keys."
+  :group 'smenu-custom-group)
+
+(defcustom smenu-exit-trigger-key "q"
+  "Trigger key for `smenu-kill-buffer' which kills the menu buffer."
+  :link '(function-link :tag "smenu kill buffer function"
+                        smenu-kill-buffer)
+  :group 'smenu-custom-group)
+(defcustom smenu-buffer "*Simple Menu*"
+  "Name of the menu buffer."
+  :group 'smenu-custom-group)
+(defcustom smenu-header "------------------------------- Simple Menu --------\
+-----------------------"
+  "Header for the menu buffer. This is displayed at the top of the menu
+buffer."
+  :group 'smenu-custom-group)
+
 
 ;;=========================================================================
 ;; Variables
 ;;=========================================================================
 
-(defvar smenu-menu)
-(setq smenu-menu (list
-                  'google-this-line
-                  'wikipedia-this-line
-                  'browse-url
-                  'debug-message
-                  ))
-(defvar smenu-trigger-keys (list
-                            "1"
-                            "2"
-                            "3"
-                            "4"
-                            "5"
-                            "6"
-                            "7"
-                            "8"
-                            "9"
-                            "a"
-                            "b"
-                            "c"
-                            "d"
-                            "e"
-                            "f"
-                            "g"
-                            "h"
-                            "i"
-                            "j"
-                            "k"
-                            "l"
-                            "m"
-                            "n"
-                            "o"
-                            "p"
-                            "q"
-                            "r"
-                            "s"
-                            "t"
-                            "u"
-                            "v"
-                            "w"
-                            "x"
-                            "y"
-                            "z"
-                            ))
-(defvar smenu-exit-trigger-key "q")
 (defvar smenu-assoc (list))
-(defvar smenu-counter 0)
-(defvar smenu-buffer "*Simple Menu*")
 (defvar smenu-previous-buffer)
-(defvar smenu-header "--------------------------------Simple Menu---------\
------------------------")
-(defvar smenu-current-command)
 
 
 ;;=========================================================================
