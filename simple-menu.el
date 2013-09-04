@@ -169,9 +169,11 @@ Writeds `thing-at-point' to the `*MESSAGE*' buffer upon invocation."
   "Builds the data structure `smenu-assoc' which represents the
 key-function bindings constituting menu entries."
   (setq smenu-assoc (list))  ; Clear previous entries
+  ;; Append the exit trigger binding first
   (setq smenu-assoc (append smenu-assoc (list (list
                                                smenu-exit-trigger-key
                                                'smenu-kill-buffer))))
+  ;; Append all bindings except the one for the exit trigger
   (dotimes (i (length smenu-menu))
     (let ((trigger-key (nth i smenu-trigger-keys)))
       (unless (equal trigger-key smenu-exit-trigger-key)
@@ -216,8 +218,10 @@ dispatches key events in the context of the invocation buffer."
     (toggle-read-only -1)
     (erase-buffer)
     (insert (format "%s\n\n" smenu-header))
-    (dolist (list-element smenu-assoc)
-      (smenu-insert-menu-entry list-element))
+    (dotimes (i (length smenu-assoc))
+      (when (equal i 1)
+	(insert "\n"))
+      (smenu-insert-menu-entry (nth i smenu-assoc)))
     ;; Make buffer read-only
     (toggle-read-only 1))
   (smenu-dispatch-keys))
