@@ -20,7 +20,21 @@
 
 ;;; Commentary:
 
-;; ---
+;; Provides a simple menu consisting of mappings between single key presses
+;; and user-defined functions.
+;;
+;; The functions can be either interactive or non-interactive and will be
+;; executed in the context of the invocation buffer whereas a visual list
+;; of key-command bindings is displayed in the `*Simple Menu*' buffer which
+;; appears in another window, if possible.
+;;
+;; The list and sort order of commands is customizable via the variable
+;; `simple-menu-commands' like this:
+;;   `M-x customize-variable RET simple-menu-commands'
+;;
+;; The list and sort order of commands is customizable via the variable
+;; `simple-menu-trigger-keys' like this:
+;;   `M-x customize-variable RET simple-menu-trigger-keys'
 
 ;;; Code:
 
@@ -29,17 +43,20 @@
 ;; Customizable variables
 ;;=========================================================================
 
+;; Note:
+;; The strange list layout for `smenu-menu' and `smenu-trigger-keys'
+;; intentional.
+
 (defgroup smenu-custom-group nil
   "Simple Menu customization group")
 
 (defcustom smenu-menu (list
-                       'google-this-line
-                       'wikipedia-this-line
-                       'browse-url
-                       'debug-message
-                       'yank
-                       'help
-                       )
+		       'browse-url
+		       'smenu-debug-message
+		       'yank
+		       'help
+		       'info
+		       )
   "List of available commands in the menu. The order corresponds to the
 order in which the commands are displayed as menu options.
 
@@ -48,9 +65,10 @@ menu. Its key binding can be set via `smenu-exit-trigger-key'."
   :link '(function-link :tag
                         "smenu kill buffer function (`smenu-kill-buffer')"
                         smenu-kill-buffer)
-  :link '(custom-group-link :tag
-                            "smenu exit trigger key (smenu-exit-trigger-key)"
-                            smenu-exit-trigger-key)
+  :link '(custom-group-link
+          :tag
+          "smenu exit trigger key (smenu-exit-trigger-key)"
+          smenu-exit-trigger-key)
   :group 'smenu-custom-group
   :type '(repeat function))
 
@@ -113,41 +131,66 @@ buffer."
 ;; Variables
 ;;=========================================================================
 
-(defvar smenu-assoc (list))
-(defvar smenu-previous-buffer)
+(defvar smenu-assoc (list)
+  "Data structure representing menu entries
+
+It should look like this:
+
+  ((\"1\" 'some-function)
+   (\"1\" 'some-other-function)
+   (\"3\" 'yet-another-function)
+   ;; ...
+  )
+
+The car of each list item is a key represented as a string and the cdr is a
+function which is to be associated with the corresponding key.")
+(defvar smenu-previous-buffer nil
+  "Active buffer at the time `smenu-show-menu' or `simple-menu-show' is
+called.")
 
 
 ;;=========================================================================
 ;; Functions
 ;;=========================================================================
 
+(defun smenu-debug-message ()
+  "Helper function to be used as a debugging menu option.
+
+Writeds `thing-at-point' to the `*MESSAGE*' buffer upon invocation."
+  (interactive)
+  (message (thing-at-point 'line)))
+
 (defun smenu-kill-buffer ()
+  "Kills the Simple Menu buffer `smenu-buffer'."
   (interactive)
   (kill-buffer smenu-buffer))
 
 (defun smenu-build-menu ()
+  "Builds the data structure `smenu-assoc' which represents the
+key-function bindings constituting menu entries."
+  (setq smenu-assoc (list))  ; Clear previous entries
   (setq smenu-assoc (append smenu-assoc (list (list
                                                smenu-exit-trigger-key
                                                'smenu-kill-buffer))))
   (dotimes (i (length smenu-menu))
     (let ((trigger-key (nth i smenu-trigger-keys)))
       (unless (equal trigger-key smenu-exit-trigger-key)
-        ;; Other key bindings
         (setq smenu-assoc
               (append smenu-assoc
                       (list (list trigger-key
                                   (nth i smenu-menu)))))))))
 
 (defun smenu-insert-menu-entry (menu-element)
+  "Inserts MENU-ELEMENT into the current buffer.
+
+MENU-ELEMENT has to be a list of the form `(string symbol)'."
   (insert (format "[ %s ]    %s\n" (nth 0 menu-element)
                   (symbol-name (nth 1 menu-element)))))
 
-(defun smenu-make-function (menu-command)
-  (lexical-let ((menu-command menu-command))
-    (with-current-buffer smenu-previous-buffer
-      (funcall (nth 1 menu-command)))))
+(defun smenu-dispatch-keys ()
+  "Dispatches key presses in the context of the current buffer.
 
-(defun smenu-configure-local-keys ()
+Only single key events are handled; so multi-key input will not work."
   (let ((got-valid-input nil))
     (while (not got-valid-input)
       (let* ((input-char (read-char-exclusive "Choose a menu option."))
@@ -162,43 +205,42 @@ buffer."
             (smenu-kill-buffer)))))))
 
 (defun smenu-show-menu ()
+  "Shows the Simple Menu buffer in another window, if possible, and
+dispatches key events in the context of the invocation buffer."
   (interactive)
-  (save-window-excursion  ; Jump back to original buffer
-    (setq smenu-previous-buffer (current-buffer))
-    (pop-to-buffer smenu-buffer)  ; Show menu in other window, if possible
-    (with-selected-window (get-buffer-window smenu-buffer)
-      ;; Make buffer writable
-      (toggle-read-only -1)
-      (erase-buffer)
-      (insert (format "%s\n\n" smenu-header))
-      (dolist (list-element smenu-assoc)
-        (smenu-insert-menu-entry list-element))
-      ;; Make buffer read-only
-      (toggle-read-only 1)
-      (smenu-configure-local-keys))))
+  (smenu-build-menu)
+  (setq smenu-previous-buffer (current-buffer))
+  (display-buffer (get-buffer-create smenu-buffer) t)
+  (with-selected-window (get-buffer-window smenu-buffer)
+    ;; Make buffer writable
+    (toggle-read-only -1)
+    (erase-buffer)
+    (insert (format "%s\n\n" smenu-header))
+    (dolist (list-element smenu-assoc)
+      (smenu-insert-menu-entry list-element))
+    ;; Make buffer read-only
+    (toggle-read-only 1))
+  (smenu-dispatch-keys))
 
 
-;; Init
-(setq smenu-assoc (list))
-
-
-;; REMOVE
 ;;=========================================================================
-;; Debug
+;; External interface
 ;;=========================================================================
 
-(defun debug-insert (message)
-  (insert (format "\n%s" message)))
+(defalias 'simple-menu 'smenu-show-menu
+  "Show Simple Menu.
 
-(defun debug-message ()
-  (interactive)
-  (message (thing-at-point 'line)))
+This is a facade function for `smenu-show-menu'.")
 
-(smenu-build-menu)
-(smenu-show-menu)
+(defvaralias 'simple-menu-commands 'smenu-menu
+  "List of user-defined Simple Menu commands.
 
+This is a facade variable for `smenu-menu'.")
 
+(defvaralias 'simple-menu-trigger-keys 'smenu-trigger-keys
+  "List of Simple Menu trigger keys.
 
+This is a facade variable for `smenu-trigger-keys'.")
 
 
 ;;=========================================================================
