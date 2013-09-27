@@ -60,6 +60,8 @@
   "List of available commands in the menu. The order corresponds to the
 order in which the commands are displayed as menu options.
 
+This list must not be longer than the length of `smenu-trigger-keys'.
+
 `smenu-kill-buffer' is available by default as the first command in the
 menu. Its key binding can be set via `smenu-exit-trigger-key'."
   :link '(function-link :tag
@@ -110,6 +112,8 @@ menu. Its key binding can be set via `smenu-exit-trigger-key'."
                                "z"
                                )
   "List of available keys."
+  ;; Alternative widget (harder to edit, though):
+  ;; :type '(repeat string)
   :group 'smenu-custom-group)
 
 (defcustom smenu-exit-trigger-key "q"
@@ -186,7 +190,7 @@ key-function bindings constituting menu entries."
   "Inserts MENU-ELEMENT into the current buffer.
 
 MENU-ELEMENT has to be a list of the form `(string symbol)'."
-  (insert (format "[ %s ]    %s\n" (nth 0 menu-element)
+  (insert (format "[%s]  %s\n" (nth 0 menu-element)
                   (symbol-name (nth 1 menu-element)))))
 
 (defun smenu-dispatch-keys ()
