@@ -1,23 +1,5 @@
 ;;; simple-menu.el --- Simple Menu
 
-;; Copyright (C) 2013  -
-
-;; Author: - <gronpy@gronpy.gronpy>
-;; Keywords: tools
-
-;; This program is free software; you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 ;;; Commentary:
 
 ;; Provides a simple menu consisting of mappings between single key presses
@@ -51,12 +33,12 @@
   "Simple Menu customization group")
 
 (defcustom smenu-menu (list
-		       'browse-url
-		       'smenu-debug-message
-		       'yank
-		       'help
-		       'info
-		       )
+                       'browse-url
+                       'smenu-debug-message
+                       'yank
+                       'help
+                       'info
+                       )
   "List of available commands in the menu. The order corresponds to the
 order in which the commands are displayed as menu options.
 
@@ -169,22 +151,26 @@ Writeds `thing-at-point' to the `*MESSAGE*' buffer upon invocation."
   (interactive)
   (kill-buffer smenu-buffer))
 
-(defun smenu-build-menu ()
+(defun smenu-build-menu (&optional menu)
   "Builds the data structure `smenu-assoc' which represents the
-key-function bindings constituting menu entries."
+key-function bindings constituting menu entries.
+
+MENU is a list of commands. If it is not specified `smenu-menu' is used by
+default instead."
   (setq smenu-assoc (list))  ; Clear previous entries
   ;; Append the exit trigger binding first
   (setq smenu-assoc (append smenu-assoc (list (list
                                                smenu-exit-trigger-key
                                                'smenu-kill-buffer))))
   ;; Append all bindings except the one for the exit trigger
-  (dotimes (i (length smenu-menu))
-    (let ((trigger-key (nth i smenu-trigger-keys)))
-      (unless (equal trigger-key smenu-exit-trigger-key)
-        (setq smenu-assoc
-              (append smenu-assoc
-                      (list (list trigger-key
-                                  (nth i smenu-menu)))))))))
+  (let ((menu (or menu smenu-menu)))
+    (dotimes (i (length smenu-menu))
+      (let ((trigger-key (nth i smenu-trigger-keys)))
+        (unless (equal trigger-key smenu-exit-trigger-key)
+          (setq smenu-assoc
+                (append smenu-assoc
+                        (list (list trigger-key
+                                    (nth i menu))))))))))
 
 (defun smenu-insert-menu-entry (menu-element)
   "Inserts MENU-ELEMENT into the current buffer.
@@ -203,18 +189,24 @@ Only single key events are handled; so multi-key input will not work."
              (entry (find-if (lambda (menu-entry)
                                (equal input-char
                                       (string-to-char (nth 0 menu-entry))))
-                             smenu-assoc)))
+                             smenu-assoc))
+             (first-entry (nth 1 entry)))
         (when entry
           (setq got-valid-input t)
           (with-current-buffer smenu-previous-buffer
-            (call-interactively (nth 1 entry))
+            (condition-case ex
+                ;; Try to call the menu entry interactively
+                (call-interactively first-entry)
+              ;; ... otherwise run it non-interactively (esp. useful for
+              ;; commands from `command-history')
+              ('ex (funcall (first first-entry) (rest first-entry))))
             (smenu-kill-buffer)))))))
 
-(defun smenu-show-menu ()
+(defun smenu-show-menu (&optional menu)
   "Shows the Simple Menu buffer in another window, if possible, and
 dispatches key events in the context of the invocation buffer."
   (interactive)
-  (smenu-build-menu)
+  (smenu-build-menu (or menu nil))
   (setq smenu-previous-buffer (current-buffer))
   (display-buffer (get-buffer-create smenu-buffer) t)
   (with-selected-window (get-buffer-window smenu-buffer)
@@ -222,14 +214,32 @@ dispatches key events in the context of the invocation buffer."
     (toggle-read-only -1)
     (erase-buffer)
     (insert (format "%s\n\n" smenu-header))
+    (insert (format "\ņ%S\n" smenu-assoc))  ;; DEBUG
     (dotimes (i (length smenu-assoc))
       (when (equal i 1)
-	(insert "\n"))
+        (insert "\n"))
       (smenu-insert-menu-entry (nth i smenu-assoc)))
     ;; Make buffer read-only
     (toggle-read-only 1))
   (smenu-dispatch-keys))
 
+(defun smenu-show-history-menu ()
+  "Works just like `smenu-show-menu', but uses `command-history' instead of
+`smenu-menu'.
+
+This function will not display the whole command history, but limit the
+number of commands displayed in the menu buffer to the length of the list
+`smenu-trigger-keys'."
+  (interactive)
+  (let ((menu (list)))
+    ;; Add only as many menu entries as there are available key bindings
+    (dotimes (i (length smenu-trigger-keys))
+      (setq menu (append menu (nth i (list command-history)))))
+    (smenu-show-menu menu)
+    ;; DEBUG
+    ;; (mapc (lambda (e) (message (format "********MENU: %S" (pp-to-string e))))
+    ;;       menu)
+    ))
 
 ;;=========================================================================
 ;; External interface
